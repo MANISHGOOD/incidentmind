@@ -14,6 +14,16 @@
 # Single-page application: React Router handles client-side routes
 # (/, /incidents/:ref, /memory). Serve index.html for every path so
 # deep links and refreshes don't 404.
+#
+# Order matters: Netlify matches redirects top-down, so the /assets rule
+# below must stay BEFORE the /* catch-all.
+[[redirects]]
+  from = "/assets/*"
+  to = "/index.html"
+  status = 404
+
+# Real files always win over redirects; this catch-all only fires for
+# app routes that have no file on disk (SPA fallback).
 [[redirects]]
   from = "/*"
   to = "/index.html"
