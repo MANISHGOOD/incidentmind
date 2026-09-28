@@ -2,6 +2,16 @@ import type {
   DemoState, Incident, MemoryStats, Metrics, Recommendation, Runbook,
 } from '../types'
 
+// Backend base URL. On Netlify (or any static host) set VITE_API_URL to the
+// deployed FastAPI origin, e.g. https://incidentmind-api.fly.dev (no trailing
+// slash, no secrets — this value is baked into the public JS bundle).
+// Unset → same-origin /api, which works locally through the Vite dev proxy.
+const API_BASE = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
+
+function url(path: string): string {
+  return `${API_BASE}${path}`
+}
+
 async function handle<T>(res: Response): Promise<T> {
   if (!res.ok) {
     let detail = res.statusText
@@ -16,17 +26,17 @@ async function handle<T>(res: Response): Promise<T> {
 
 export const api = {
   overview: () =>
-    fetch('/api/overview').then(r => handle<{ active_incidents: number; resolved_incidents: number }>(r)),
+    fetch(url('/api/overview')).then(r => handle<{ active_incidents: number; resolved_incidents: number }>(r)),
 
   listIncidents: (status?: string) =>
-    fetch(`/api/incidents${status ? `?status=${encodeURIComponent(status)}` : ''}`)
+    fetch(url(`/api/incidents${status ? `?status=${encodeURIComponent(status)}` : ''}`))
       .then(r => handle<Incident[]>(r)),
 
   getIncident: (ref: string) =>
-    fetch(`/api/incidents/${ref}`).then(r => handle<Incident>(r)),
+    fetch(url(`/api/incidents/${ref}`)).then(r => handle<Incident>(r)),
 
   createIncident: (body: { service_name: string; alert_text: string; severity?: string }) =>
-    fetch('/api/incidents', {
+    fetch(url('/api/incidents'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -35,32 +45,32 @@ export const api = {
   resolveIncident: (ref: string, body: {
     root_cause: string; action_taken: string; outcome?: string; lessons?: string[]
   }) =>
-    fetch(`/api/incidents/${ref}/resolve`, {
+    fetch(url(`/api/incidents/${ref}/resolve`), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     }).then(r => handle<{ resolved: boolean; memory_retained: boolean }>(r)),
 
-  runbooks: () => fetch('/api/runbooks').then(r => handle<Runbook[]>(r)),
+  runbooks: () => fetch(url('/api/runbooks')).then(r => handle<Runbook[]>(r)),
 
-  memoryStats: () => fetch('/api/memory/stats').then(r => handle<MemoryStats>(r)),
+  memoryStats: () => fetch(url('/api/memory/stats')).then(r => handle<MemoryStats>(r)),
 
   toggleMemory: (enabled: boolean) =>
-    fetch('/api/memory/toggle', {
+    fetch(url('/api/memory/toggle'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ enabled }),
     }).then(r => handle<{ memory_enabled: boolean }>(r)),
 
   demoReset: () =>
-    fetch('/api/demo/reset', { method: 'POST' }).then(r => handle<unknown>(r)),
+    fetch(url('/api/demo/reset'), { method: 'POST' }).then(r => handle<unknown>(r)),
 
   demoSeedMemory: () =>
-    fetch('/api/demo/seed-memory', { method: 'POST' }).then(r => handle<{ retained: number; failed: number; total: number }>(r)),
+    fetch(url('/api/demo/seed-memory'), { method: 'POST' }).then(r => handle<{ retained: number; failed: number; total: number }>(r)),
 
-  demoState: () => fetch('/api/demo/state').then(r => handle<DemoState>(r)),
+  demoState: () => fetch(url('/api/demo/state')).then(r => handle<DemoState>(r)),
 
-  metrics: () => fetch('/api/metrics').then(r => handle<Metrics>(r)),
+  metrics: () => fetch(url('/api/metrics')).then(r => handle<Metrics>(r)),
 }
 
 export interface StreamEvent {
@@ -71,7 +81,7 @@ export interface StreamEvent {
 
 /** Run an investigation, invoking onEvent for each streamed agent step. */
 export async function investigate(ref: string, onEvent: (ev: StreamEvent) => void): Promise<void> {
-  const res = await fetch(`/api/incidents/${ref}/investigate`, { method: 'POST' })
+  const res = await fetch(url(`/api/incidents/${ref}/investigate`), { method: 'POST' })
   if (!res.ok || !res.body) {
     throw new Error(`Investigation failed: ${res.statusText}`)
   }

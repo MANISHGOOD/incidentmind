@@ -180,6 +180,54 @@ python scripts/e2e_check.py    # with the API running on :8012
 cd frontend && npm run build   # typecheck + production build
 ```
 
+## Deployment
+
+The deployment split mirrors the architecture: **frontend on Netlify (static), backend on a Python host**.
+
+### Frontend (Netlify)
+
+The repo ships `netlify.toml`, so Netlify's build settings are pre-configured:
+
+| Setting | Value |
+|---|---|
+| Base directory | `frontend` |
+| Build command | `npm run build` |
+| Publish directory | `dist` |
+| SPA routing | all paths → `/index.html` (status 200) |
+
+After connecting the GitHub repo, set **one environment variable** in Netlify
+(Site settings → Environment variables):
+
+```
+VITE_API_URL=https://<your-deployed-backend-host>
+```
+
+This is the FastAPI origin the browser will call. Without it the app falls back
+to same-origin `/api`, which only works in local development.
+
+### Backend (NOT on Netlify)
+
+Netlify serves static files only — the FastAPI backend, PostgreSQL, Hindsight and the
+Groq key must live elsewhere:
+
+1. Deploy `backend/` to a Python host (Render, Railway, Fly.io, a VPS behind Caddy, …)
+   with the `backend/requirements.txt`.
+2. Run PostgreSQL and Hindsight (both are in `docker-compose.yml`) on that host and set
+   `DATABASE_URL` + `HINDSIGHT_BASE_URL` for the backend service.
+3. Set the backend's `CORS_ORIGINS` to your Netlify domain, e.g.
+   `https://monumental-khapse-b6b78e.netlify.app`.
+4. Put that backend URL into Netlify's `VITE_API_URL` (above).
+
+```
+Browser → Netlify (React/Vite SPA) → FastAPI backend → Groq + Hindsight + PostgreSQL
+```
+
+### Secret handling
+
+`VITE_*` variables are **baked into the public JavaScript bundle** — they are for public
+configuration (URLs) only. `GROQ_API_KEY`, Hindsight credentials, and database
+credentials stay server-side in the backend host's environment. `.env` is git-ignored.
+
 ## Safety note
 
 - The agent **proposes** actions; nothing is executed autonomously. Only the engineer's

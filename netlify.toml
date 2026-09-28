@@ -1,0 +1,20 @@
+# Netlify configuration for the IncidentMind frontend (Vite + React SPA).
+# The frontend lives in /frontend; the publish dir is relative to this base.
+
+[build]
+  base = "frontend"
+  command = "npm run build"
+  publish = "dist"
+
+# Vite environment variables (set in Netlify UI → Site settings → Environment variables):
+#   VITE_API_URL = https://<your-deployed-backend-host>   (NO trailing slash, NO secrets)
+# If unset, the app calls same-origin /api (works locally via the Vite dev proxy).
+# Never put API keys in VITE_* variables — they are baked into the public JS bundle.
+
+# Single-page application: React Router handles client-side routes
+# (/, /incidents/:ref, /memory). Serve index.html for every path so
+# deep links and refreshes don't 404.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
