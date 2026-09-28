@@ -39,6 +39,32 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 logger = logging.getLogger("incidentmind.api")
 
 
+async def _auto_restore_memory() -> None:
+    """Rebuild organizational memory in the background after boot.
+
+    Free-tier Hindsight is ephemeral (Render disks are paid-only), so memory
+    is re-retained on every fresh container: idempotent by document id
+    (incident refs). Skipped when the bank already has entries.
+    """
+    memory = get_memory()
+    if not (memory.enabled and await memory.check_available(force=True)):
+        logger.info("Hindsight not reachable — organizational memory self-heal skipped this boot")
+        return
+    try:
+        mem_stats = await memory.stats()
+        if mem_stats.get("entries"):
+            logger.info("Organizational memory already populated (%s entries)", mem_stats["entries"])
+            return
+        db = next(get_db())
+        try:
+            mem_counts = await seed_memory_from_history(db, memory)
+            logger.info("Organizational memory restored: %s", mem_counts)
+        finally:
+            db.close()
+    except Exception as e:  # noqa: BLE001
+        logger.warning("Memory auto-seed skipped: %s", e)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_settings()
@@ -51,14 +77,17 @@ async def lifespan(app: FastAPI):
         logger.warning("Demo data seeding skipped: %s", e)
     finally:
         db.close()
+
     memory = get_memory()
     logger.info(
         "IncidentMind up — model=%s memory=%s@%s (enabled=%s)",
         settings.agent_model,
         settings.hindsight_bank_id,
-        settings.hindsight_base_url,
+        settings.hindsight_url,
         memory.enabled,
     )
+    # Non-blocking: don't hold the health check hostage while memory restores.
+    asyncio.create_task(_auto_restore_memory())
     yield
 
 

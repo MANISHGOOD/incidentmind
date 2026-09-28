@@ -1,12 +1,19 @@
-# Render Blueprint for the IncidentMind production backend.
+# Render Blueprint for the IncidentMind production backend — ₹0 / free-tier only.
 # Deploy via Render Dashboard → Blueprint → point at this repository.
 # The frontend on Netlify only needs VITE_API_URL=<incidentmind-api URL>.
 #
-# Secrets (GROQ_API_KEY) are `sync: false`: Render prompts for them during
-# deploy and stores them in its dashboard — never committed to the repo.
+# Free-tier design notes (no credit card required for any resource):
+# - api + hindsight: free web services (512MB RAM, spin down after ~15min idle)
+# - db: free PostgreSQL (expires 30 days after creation — recreate or upgrade later)
+# - Persistent disks are PAID-ONLY on Render, so Hindsight runs WITHOUT a disk.
+#   Its embedded database is therefore ephemeral. The API compensates: on every
+#   boot it auto-retains the historical incident dataset back into Hindsight
+#   (idempotent by document id), so organizational memory self-heals after any
+#   cold start. Resolutions created during a live session persist until the
+#   next sleep cycle; re-resolve or re-run Seed memory to restore them.
 #
-# Topology: incidentmind-api (FastAPI/Docker) → incidentmind-db (Postgres)
-#           incidentmind-api → incidentmind-hindsight (memory, Docker)
+# Secrets are `sync: false`: Render prompts for them during deploy and stores
+# them in its dashboard — never committed to the repo.
 
 services:
   - type: web
@@ -42,7 +49,7 @@ services:
     runtime: docker
     dockerfilePath: ./Dockerfile.hindsight
     dockerContext: .
-    plan: starter          # persistent disks require a paid instance
+    plan: free
     # The official Hindsight image listens on 8888 (API) + 9999 (UI) and does
     # not read Render's PORT. Declaring PORT=8888 aligns Render's internal
     # routing and the fromService hostport with the image's fixed port.
@@ -53,12 +60,8 @@ services:
         value: groq
       - key: HINDSIGHT_API_LLM_API_KEY
         sync: false        # same new Groq key, entered in the dashboard
-    # Persistent disk keeps the embedded Postgres (pg0) data so accumulated
-    # organizational memory survives redeploys.
-    disk:
-      name: hindsight-data
-      mountPath: /home/hindsight/.pg0
-      sizeGB: 1
+    # No disk: Render disks are paid-only. Memory ephemerality is handled by
+    # the API's boot-time auto-seed (see header notes).
 
 databases:
   - name: incidentmind-db
