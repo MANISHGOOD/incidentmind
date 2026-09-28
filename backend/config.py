@@ -45,6 +45,15 @@ class Settings(BaseSettings):
             url = url.replace("postgres://", "postgresql+psycopg://", 1)
         return url
 
+    @property
+    def hindsight_url(self) -> str:
+        """Hindsight base URL with a guaranteed scheme (Render injects
+        internal hostnames like 'incidentmind-hindsight:8888' without one)."""
+        url = self.hindsight_base_url.strip()
+        if not url.startswith(("http://", "https://")):
+            url = "http://" + url
+        return url.rstrip("/")
+
 
 @lru_cache
 def get_settings() -> Settings:

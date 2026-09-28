@@ -1,0 +1,24 @@
+# Keep the backend image lean: context is the repo root (see render.yaml).
+.git
+.github
+.tools
+.freebuff
+.venv
+venv
+__pycache__
+**/__pycache__
+*.py[cod]
+.pytest_cache
+*.tsbuildinfo
+
+# Frontend build artifacts and dependencies never belong in the API image
+frontend/node_modules
+frontend/dist
+node_modules
+
+# Local state
+*.db
+*.sqlite3
+.env
+.env.local
+*.log.out

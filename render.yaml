@@ -40,15 +40,21 @@ services:
     databaseName: incidentmind
     user: incidentmind
 
-  # Hindsight (memory) as a private container-backed service.
-  # If your Render region lacks Docker runtime for this, run Hindsight on
-  # Fly.io instead and point HINDSIGHT_BASE_URL at it.
+  # Hindsight (memory) as a container-backed web service.
+  # The official image EXPOSEs 8888 (API) first, then 9999 (UI); Render routes
+  # to the first exposed port, so the internal URL is incidentmind-hindsight:8888.
   - type: web
     name: incidentmind-hindsight
     runtime: docker
     dockerfilePath: ./Dockerfile.hindsight
     dockerContext: .
     plan: starter
+    # Persistent disk keeps the embedded Postgres (pg0) data so accumulated
+    # organizational memory survives redeploys.
+    disk:
+      name: hindsight-data
+      mountPath: /home/hindsight/.pg0
+      sizeGB: 1
     envVars:
       - key: HINDSIGHT_API_LLM_PROVIDER
         value: groq

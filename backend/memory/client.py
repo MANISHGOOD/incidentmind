@@ -62,7 +62,7 @@ class MemoryService:
     def client(self) -> Hindsight:
         if self._client is None:
             self._client = Hindsight(
-                base_url=self.settings.hindsight_base_url,
+                base_url=self.settings.hindsight_url,
                 api_key=self.settings.hindsight_api_key or None,
                 timeout=60.0,
             )
@@ -79,7 +79,7 @@ class MemoryService:
             await asyncio.wait_for(self.client.aget_version(), timeout=5)
             self._available = True
         except Exception as e:  # noqa: BLE001 — any failure means "no memory"
-            logger.warning("Hindsight unavailable at %s: %s", self.settings.hindsight_base_url, e)
+            logger.warning("Hindsight unavailable at %s: %s", self.settings.hindsight_url, e)
             self._available = False
         self._checked_at = now
         return self._available
