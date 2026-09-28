@@ -1,1 +1,12 @@
-FROM ghcr.io/vectorize-io/hindsight:latest
+# IncidentMind production backend — Hindsight API (slim variant) for Render free tier.
+#
+# Why slim: the full image bundles local embedding (~130MB) + reranker (~90MB)
+# models and their PyTorch/ONNX runtimes (1.5GB+ RAM); it OOM-kills Render's
+# 512MB free plan. The slim image delegates embeddings/reranking to external
+# providers and needs an external PostgreSQL — all wired here at ₹0:
+#   - LLM:        Gemini free tier (AI Studio key; Groq's free tier caps at
+#                 8k TPM while a single Hindsight retain needs ~64k)
+#   - Embeddings: Gemini embedding API (same free key)
+#   - Reranker:   rrf (no neural model, minimal resources)
+#   - Database:   the same free Render Postgres as the app, schema-separated
+FROM ghcr.io/vectorize-io/hindsight-api:latest-slim

@@ -7,8 +7,10 @@
 # Hindsight UI   -> http://localhost:9999
 # Postgres       -> localhost:5432 (incidentmind/incidentmind)
 #
-# The hindsight container needs an LLM key for memory extraction:
-#   export GROQ_API_KEY=gsk_...   # or put it in the .env file next to this file
+# The hindsight container needs an LLM key for memory extraction. Use a free
+# Google AI Studio key (GEMINI_API_KEY in .env): Groq's free tier caps at 8k
+# tokens/min while a single Hindsight retain needs ~64k, so Groq free cannot
+# power Hindsight's extraction LLM. The IncidentMind agent keeps using Groq.
 
 services:
   postgres:
@@ -29,17 +31,23 @@ services:
       retries: 10
 
   hindsight:
-    image: ghcr.io/vectorize-io/hindsight:latest
+    # Slim image: no bundled ML models (fits small machines); embeddings and
+    # reranking are externalized exactly like the Render free-tier deployment.
+    image: ghcr.io/vectorize-io/hindsight-api:latest-slim
     container_name: incidentmind-hindsight
     ports:
       - "8888:8888"
-      - "9999:9999"
     environment:
-      # Hindsight uses its own LLM to extract facts from retained memories.
-      # Groq is used here so the whole stack shares one API key.
-      HINDSIGHT_API_LLM_PROVIDER: groq
-      HINDSIGHT_API_LLM_API_KEY: ${GROQ_API_KEY}
-      HINDSIGHT_API_LLM_MODEL: ${HINDSIGHT_LLM_MODEL:-openai/gpt-oss-120b}
+      # Hindsight's internal LLM + embeddings: Gemini free tier.
+      HINDSIGHT_API_LLM_PROVIDER: gemini
+      HINDSIGHT_API_LLM_MODEL: gemini-3.5-flash
+      HINDSIGHT_API_LLM_API_KEY: ${GEMINI_API_KEY}
+      HINDSIGHT_API_EMBEDDINGS_PROVIDER: google
+      HINDSIGHT_API_EMBEDDINGS_GEMINI_MODEL: gemini-embedding-001
+      HINDSIGHT_API_EMBEDDINGS_GEMINI_API_KEY: ${GEMINI_API_KEY}
+      # Reranker without a neural model: minimal resources.
+      HINDSIGHT_API_RERANKER_PROVIDER: rrf
+      HINDSIGHT_API_WORKER_ID: hindsight-local
     volumes:
       - hindsight-data:/home/hindsight/.pg0
     restart: unless-stopped

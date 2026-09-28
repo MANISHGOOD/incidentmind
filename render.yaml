@@ -1,16 +1,23 @@
-# Render Blueprint for the IncidentMind production backend — ₹0 / free-tier only.
-# Deploy via Render Dashboard → Blueprint → point at this repository.
-# The frontend on Netlify only needs VITE_API_URL=<incidentmind-api URL>.
+# Render Blueprint for the IncidentMind production backend — ₹0 / free tier only.
 #
-# Free-tier design notes (no credit card required for any resource):
-# - api + hindsight: free web services (512MB RAM, spin down after ~15min idle)
-# - db: free PostgreSQL (expires 30 days after creation — recreate or upgrade later)
-# - Persistent disks are PAID-ONLY on Render, so Hindsight runs WITHOUT a disk.
-#   Its embedded database is therefore ephemeral. The API compensates: on every
-#   boot it auto-retains the historical incident dataset back into Hindsight
-#   (idempotent by document id), so organizational memory self-heals after any
-#   cold start. Resolutions created during a live session persist until the
-#   next sleep cycle; re-resolve or re-run Seed memory to restore them.
+# Free-tier architecture (no credit card, no paid plans, no disks):
+#   incidentmind-api       free Docker web service (FastAPI + Groq agent LLM)
+#   incidentmind-hindsight free Docker web service — SLIM image, no local ML models
+#   incidentmind-db        free PostgreSQL, shared: app tables in `public`,
+#                          Hindsight memory in its own schema
+#
+# Why the slim image: the full Hindsight image bundles local embedding +
+# reranker models (1.5GB+ RAM) and gets OOM-killed on Render's 512MB free plan.
+# The slim image externalizes models per Hindsight's docs:
+#   LLM        -> Gemini free tier (a single retain call needs ~64k tokens;
+#                 Groq's free tier caps at 8k TPM and cannot serve Hindsight)
+#   Embeddings -> Gemini embedding API (same free AI Studio key)
+#   Reranker   -> rrf (no neural model, minimal resources)
+#   Database   -> same free Postgres instance, HINDSIGHT_API_DATABASE_SCHEMA=hindsight
+#
+# Ephemeral by design (no disk on free): organizational memory self-heals —
+# backend/main.py re-retains the historical dataset into Hindsight on every
+# boot, idempotently by document id.
 #
 # Secrets are `sync: false`: Render prompts for them during deploy and stores
 # them in its dashboard — never committed to the repo.
@@ -40,7 +47,7 @@ services:
       - key: CORS_ORIGINS
         value: https://monumental-khapse-b6b78e.netlify.app,http://localhost:5173
       - key: GROQ_API_KEY
-        sync: false        # enter your new key in the Render dashboard
+        sync: false        # the IncidentMind agent's LLM (chat-sized calls fit Groq free)
       - key: HINDSIGHT_API_KEY
         sync: false        # leave empty unless Hindsight is fronted by auth
 
@@ -50,18 +57,45 @@ services:
     dockerfilePath: ./Dockerfile.hindsight
     dockerContext: .
     plan: free
-    # The official Hindsight image listens on 8888 (API) + 9999 (UI) and does
-    # not read Render's PORT. Declaring PORT=8888 aligns Render's internal
-    # routing and the fromService hostport with the image's fixed port.
+    # The API image listens on its default port 8888; declaring PORT documents
+    # the routing target for Render's port detection and fromService hostport.
     envVars:
       - key: PORT
         value: "8888"
+      # Stable worker identity across restarts (recommended by Hindsight docs
+      # for ephemeral containers; prevents parked-task orphans).
+      - key: HINDSIGHT_API_WORKER_ID
+        value: hindsight-render-free
+      # ---- Database: shared free Postgres, schema-separated ----
+      - key: HINDSIGHT_API_DATABASE_URL
+        fromDatabase:
+          name: incidentmind-db
+          property: connectionString
+      - key: HINDSIGHT_API_DATABASE_SCHEMA
+        value: hindsight
+      # Small pools: free Postgres allows 50 connections total, shared with
+      # the API service's SQLAlchemy pool.
+      - key: HINDSIGHT_API_DB_POOL_MIN_SIZE
+        value: "2"
+      - key: HINDSIGHT_API_DB_POOL_MAX_SIZE
+        value: "10"
+      # ---- LLM: Gemini free tier (Groq free cannot serve retains) ----
       - key: HINDSIGHT_API_LLM_PROVIDER
-        value: groq
+        value: gemini
+      - key: HINDSIGHT_API_LLM_MODEL
+        value: gemini-3.5-flash
       - key: HINDSIGHT_API_LLM_API_KEY
-        sync: false        # same new Groq key, entered in the dashboard
-    # No disk: Render disks are paid-only. Memory ephemerality is handled by
-    # the API's boot-time auto-seed (see header notes).
+        sync: false        # free Google AI Studio key (aistudio.google.com)
+      # ---- Embeddings: Gemini embedding API (same free key) ----
+      - key: HINDSIGHT_API_EMBEDDINGS_PROVIDER
+        value: google
+      - key: HINDSIGHT_API_EMBEDDINGS_GEMINI_MODEL
+        value: gemini-embedding-001
+      - key: HINDSIGHT_API_EMBEDDINGS_GEMINI_API_KEY
+        sync: false        # same free Google AI Studio key
+      # ---- Reranker: rrf — no neural model, minimal resources ----
+      - key: HINDSIGHT_API_RERANKER_PROVIDER
+        value: rrf
 
 databases:
   - name: incidentmind-db
