@@ -1,8 +1,12 @@
 # Render Blueprint for the IncidentMind production backend.
-# Deploy via Render Dashboard → New → Blueprint → point at this repository.
-# The frontend on Netlify only needs VITE_API_URL=<this web service URL>.
+# Deploy via Render Dashboard → Blueprint → point at this repository.
+# The frontend on Netlify only needs VITE_API_URL=<incidentmind-api URL>.
 #
-# Secrets (GROQ_API_KEY) are entered in the Render dashboard — never committed.
+# Secrets (GROQ_API_KEY) are `sync: false`: Render prompts for them during
+# deploy and stores them in its dashboard — never committed to the repo.
+#
+# Topology: incidentmind-api (FastAPI/Docker) → incidentmind-db (Postgres)
+#           incidentmind-api → incidentmind-hindsight (memory, Docker)
 
 services:
   - type: web
@@ -14,9 +18,8 @@ services:
     healthCheckPath: /health
     envVars:
       - key: DATABASE_URL
-        fromService:
+        fromDatabase:
           name: incidentmind-db
-          type: psql
           property: connectionString
       - key: HINDSIGHT_BASE_URL
         fromService:
@@ -30,33 +33,35 @@ services:
       - key: CORS_ORIGINS
         value: https://monumental-khapse-b6b78e.netlify.app,http://localhost:5173
       - key: GROQ_API_KEY
-        sync: false          # set in the Render dashboard after first deploy
+        sync: false        # enter your new key in the Render dashboard
       - key: HINDSIGHT_API_KEY
-        sync: false          # only if you front Hindsight with auth
+        sync: false        # leave empty unless Hindsight is fronted by auth
 
-  - type: psql
-    name: incidentmind-db
-    plan: free
-    databaseName: incidentmind
-    user: incidentmind
-
-  # Hindsight (memory) as a container-backed web service.
-  # The official image EXPOSEs 8888 (API) first, then 9999 (UI); Render routes
-  # to the first exposed port, so the internal URL is incidentmind-hindsight:8888.
   - type: web
     name: incidentmind-hindsight
     runtime: docker
     dockerfilePath: ./Dockerfile.hindsight
     dockerContext: .
-    plan: starter
+    plan: starter          # persistent disks require a paid instance
+    # The official Hindsight image listens on 8888 (API) + 9999 (UI) and does
+    # not read Render's PORT. Declaring PORT=8888 aligns Render's internal
+    # routing and the fromService hostport with the image's fixed port.
+    envVars:
+      - key: PORT
+        value: "8888"
+      - key: HINDSIGHT_API_LLM_PROVIDER
+        value: groq
+      - key: HINDSIGHT_API_LLM_API_KEY
+        sync: false        # same new Groq key, entered in the dashboard
     # Persistent disk keeps the embedded Postgres (pg0) data so accumulated
     # organizational memory survives redeploys.
     disk:
       name: hindsight-data
       mountPath: /home/hindsight/.pg0
       sizeGB: 1
-    envVars:
-      - key: HINDSIGHT_API_LLM_PROVIDER
-        value: groq
-      - key: HINDSIGHT_API_LLM_API_KEY
-        sync: false          # same Groq key, entered in the dashboard
+
+databases:
+  - name: incidentmind-db
+    databaseName: incidentmind
+    user: incidentmind
+    plan: free
