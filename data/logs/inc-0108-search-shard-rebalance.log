@@ -1,0 +1,6 @@
+2026-04-05T16:10:22Z WARN  search-service es_cluster health=yellow relocating_shards=14 nodes_leaving=1
+2026-04-05T16:14:03Z WARN  search-service query p99_ms=4200 baseline_ms=480 msg="shard recovery IO saturating data nodes"
+2026-04-05T16:31:55Z INFO  es-cluster msg="node search-data-3 replaced, automatic rebalancing started"
+2026-04-05T16:52:40Z WARN  search-service query p99_ms=9100 msg="recovery concurrency throttled to 2"
+2026-04-05T17:02:11Z INFO  es-cluster msg="rebalancing 60% complete, replicas allocating"
+2026-04-05T17:15:00Z INFO  search-service query p99_ms=520 msg="cluster green, latency recovered"

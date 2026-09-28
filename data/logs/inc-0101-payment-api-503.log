@@ -1,0 +1,10 @@
+2026-03-14T10:32:01Z WARN  payment-api [req-8f21] POST /v1/charges upstream=redis op=checkout_session waiting_for_connection pool=redis-charge busy=10/10 wait_ms=4821
+2026-03-14T10:32:03Z ERROR payment-api [req-8f34] POST /v1/charges status=503 cause="redis pool timed out" pool=redis-charge timeout_ms=5000
+2026-03-14T10:33:47Z WARN  payment-api [req-91aa] connection_leak_suspect acquired=00:14:52 released=false path=/v1/charges/confirm handler=ChargeCapture
+2026-03-14T10:35:10Z ERROR payment-api [req-a210] POST /v1/charges status=503 cause="redis pool timed out" pool=redis-charge timeout_ms=5000
+2026-03-14T10:41:39Z WARN  payment-api health probe redis_ready=false pool_in_use=10 pool_size=10
+2026-03-14T10:52:12Z ERROR payment-api [req-c771] POST /v1/charges status=503 cause="redis pool timed out" pool=redis-charge timeout_ms=5000
+2026-03-14T11:02:55Z WARN  payment-api metrics error_rate=0.34 endpoint=/v1/charges trend=climbing
+2026-03-14T11:29:04Z INFO  payment-api deploy build=2b91ef7 msg="hotfix: release redis connection in finally block; pool size 10 -> 50"
+2026-03-14T11:35:20Z WARN  payment-api [req-e502] connection_leak_suspect acquired=00:00:03 released=true path=/v1/charges/confirm handler=ChargeCapture
+2026-03-14T11:47:11Z INFO  payment-api metrics error_rate=0.002 endpoint=/v1/charges msg="recovered to baseline"

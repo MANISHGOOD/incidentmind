@@ -1,0 +1,6 @@
+2026-04-12T07:05:03Z WARN  redis-cluster msg="primary checkout-sessions failed, promoting replica checkout-sessions-r1"
+2026-04-12T07:05:09Z ERROR checkout-service [req-6102] GET /checkout/status cause="read tcp 10.2.3.4:51122->10.2.3.9:6379: connection reset by peer"
+2026-04-12T07:05:31Z WARN  checkout-service metrics session_error_rate=0.18 trend=transient msg="failover window"
+2026-04-12T07:09:54Z WARN  redis-cluster msg="failover complete, new primary serving"
+2026-04-12T07:12:26Z INFO  checkout-service deploy msg="redis client retry-with-backoff enabled, timeouts shortened"
+2026-04-12T07:30:00Z INFO  checkout-service metrics session_error_rate=0.001 msg="recovered; later failovers clean"

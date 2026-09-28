@@ -1,0 +1,6 @@
+2026-06-11T13:25:00Z ERROR checkout-service deploy env=staging build=4.3.0-rc2 msg="startup validation failed: PAYMENT_PROVIDER_URL is not set"
+2026-06-11T13:25:04Z WARN  k8s pod=checkout-rc2-1 readiness probe failed: connection refused restart_count=1
+2026-06-11T13:25:31Z WARN  k8s deployment=checkout msg="health checks failing, rollback initiated"
+2026-06-11T13:27:12Z INFO  k8s deployment=checkout msg="rollback complete, previous revision serving"
+2026-06-11T13:44:50Z INFO  checkout-service deploy env=staging msg="PAYMENT_PROVIDER_URL added to deploy config"
+2026-06-11T13:55:00Z INFO  k8s deployment=checkout msg="build 4.3.0-rc2 healthy, all checks green"

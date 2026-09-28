@@ -1,0 +1,8 @@
+2026-05-30T04:02:00Z ERROR auth-service [req-9001] POST /v1/token/refresh status=401 cause="certificate verify failed: certificate has expired" cert=internal-signing not_after=2026-05-30T04:00:00Z
+2026-05-30T04:02:04Z ERROR auth-service [req-9002] GET /v1/whoami status=401 cause="signature validation rejected: trust bundle out of date"
+2026-05-30T04:02:11Z WARN  auth-service metrics auth_failure_rate=1.00 baseline=0.02 msg="all authenticated traffic rejected"
+2026-05-30T04:05:37Z ERROR api-gateway upstream=auth-service auth_attempts_failing=100pct msg="gateway healthy, downstream auth rejecting"
+2026-05-30T04:22:48Z INFO  auth-service ops msg="signing certificate rotated; new not_after=2026-08-28"
+2026-05-30T04:35:12Z INFO  auth-service deploy msg="renewed trust bundle rolled to all instances"
+2026-05-30T04:44:29Z WARN  auth-service metrics auth_failure_rate=0.03 trend=recovering
+2026-05-30T04:48:00Z INFO  auth-service metrics auth_failure_rate=0.02 msg="fully recovered"

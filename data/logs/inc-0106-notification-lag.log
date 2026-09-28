@@ -1,0 +1,7 @@
+2026-03-02T08:20:05Z WARN  notification-service consumer=email-send topic=retry-emails lag=12400 trend=linear_growth
+2026-03-02T08:26:41Z ERROR notification-service provider=sendgrid status=429 msg="rate limited, requeueing without backoff"
+2026-03-02T08:41:19Z WARN  notification-service consumer=email-send topic=retry-emails lag=38200 msg="retry storm: same messages requeued repeatedly"
+2026-03-02T09:05:33Z ERROR notification-service provider=sendgrid status=503 msg="provider outage confirmed via status page"
+2026-03-02T09:22:56Z INFO  notification-service deploy msg="added exponential backoff + DLQ for repeated provider failures"
+2026-03-02T09:48:15Z INFO  notification-service provider=sendgrid status=200 msg="provider recovered"
+2026-03-02T10:05:00Z INFO  notification-service consumer=email-send lag=0 msg="backlog drained"

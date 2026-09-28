@@ -1,0 +1,49 @@
+# IncidentMind infrastructure
+#
+#   docker compose up -d          # start postgres + hindsight
+#   docker compose ps             # check health
+#
+# Hindsight API  -> http://localhost:8888
+# Hindsight UI   -> http://localhost:9999
+# Postgres       -> localhost:5432 (incidentmind/incidentmind)
+#
+# The hindsight container needs an LLM key for memory extraction:
+#   export GROQ_API_KEY=gsk_...   # or put it in the .env file next to this file
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: incidentmind-postgres
+    environment:
+      POSTGRES_USER: incidentmind
+      POSTGRES_PASSWORD: incidentmind
+      POSTGRES_DB: incidentmind
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U incidentmind"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  hindsight:
+    image: ghcr.io/vectorize-io/hindsight:latest
+    container_name: incidentmind-hindsight
+    ports:
+      - "8888:8888"
+      - "9999:9999"
+    environment:
+      # Hindsight uses its own LLM to extract facts from retained memories.
+      # Groq is used here so the whole stack shares one API key.
+      HINDSIGHT_API_LLM_PROVIDER: groq
+      HINDSIGHT_API_LLM_API_KEY: ${GROQ_API_KEY}
+      HINDSIGHT_API_LLM_MODEL: ${HINDSIGHT_LLM_MODEL:-openai/gpt-oss-120b}
+    volumes:
+      - hindsight-data:/home/hindsight/.pg0
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  hindsight-data:

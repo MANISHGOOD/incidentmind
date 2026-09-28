@@ -1,0 +1,9 @@
+2026-01-18T09:12:04Z WARN  checkout-service pod=checkout-7d9f-2 memory_usage=1.94GiB/2.00GiB trend=climbing_since_deploy=v4.2.0
+2026-01-18T10:03:31Z ERROR kernel pod=checkout-7d9f-2 msg="Out of memory: Killed process 1 (node)" reason=OOMKilled
+2026-01-18T10:03:35Z INFO  k8s pod=checkout-7d9f-2 msg="Container checkout restarted" restart_count=1
+2026-01-18T11:47:22Z WARN  checkout-service cart_cache entries=481932 eviction_policy=none ttl=none backend=in_process
+2026-01-18T13:15:50Z ERROR kernel pod=checkout-7d9f-5 msg="Out of memory: Killed process 1 (node)" reason=OOMKilled
+2026-01-18T13:15:55Z INFO  k8s pod=checkout-7d9f-5 msg="Container checkout restarted" restart_count=3
+2026-01-18T15:58:12Z INFO  checkout-service deploy v4.2.1 msg="cart cache moved to redis backend ttl=30m; rolling restart"
+2026-01-18T16:20:44Z WARN  checkout-service pod=checkout-8c1a-1 memory_usage=1.21GiB/2.00GiB trend=flat
+2026-01-18T16:40:03Z INFO  k8s msg="all checkout pods healthy" restart_count=0

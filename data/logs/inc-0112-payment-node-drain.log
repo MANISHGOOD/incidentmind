@@ -1,0 +1,7 @@
+2026-01-29T21:15:07Z WARN  k8s node=node-4 msg="node drained for maintenance, 4 payment-api pods rescheduled"
+2026-01-29T21:15:40Z WARN  payment-api pod=payment-5d21-1 msg="cold start: readiness probe pending" start_latency_ms=8400
+2026-01-29T21:15:52Z ERROR api-gateway upstream=payment-api status=503 msg="not enough healthy upstream endpoints (2 of 6 available)"
+2026-01-29T21:22:18Z INFO  k8s msg="all payment-api pods ready again"
+2026-01-29T21:31:45Z INFO  k8s ops msg="PodDisruptionBudget payment-api-min-3 created (minAvailable=3)"
+2026-01-29T21:45:02Z INFO  k8s ops msg="zone anti-affinity applied to payment-api"
+2026-01-29T21:50:00Z INFO  k8s msg="error rate back to baseline"

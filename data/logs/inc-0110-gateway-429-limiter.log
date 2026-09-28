@@ -1,0 +1,5 @@
+2026-05-14T09:40:08Z WARN  api-gateway [req-7711] client=corp-acme key=ak_live_9931 status=429 limit=1000/window dimension=per_ip ip=203.0.113.7 shared_ips=1840
+2026-05-14T09:40:15Z ERROR api-gateway metrics status_429_rate=0.04 customer=corp-acme msg="single customer affected"
+2026-05-14T09:47:33Z WARN  api-gateway config route=/v1/orders limiter=per_ip msg="NAT egress funnels 1840 users through 6 IPs"
+2026-05-14T09:58:20Z INFO  api-gateway config msg="route limiter switched to per_api_key, tier limit raised"
+2026-05-14T10:10:00Z INFO  api-gateway metrics status_429_rate=0.000 customer=corp-acme msg="resolved"

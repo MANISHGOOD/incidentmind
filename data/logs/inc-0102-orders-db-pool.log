@@ -1,0 +1,8 @@
+2026-02-02T14:05:02Z ERROR orders-service [req-1a02] GET /v2/orders status=500 cause="psycopg2.OperationalError: FATAL: sorry, too many clients already"
+2026-02-02T14:05:09Z WARN  orders-service db_pool in_use=40/40 wait_ms=3120 db=orders_primary
+2026-02-02T14:07:44Z ERROR orders-service [req-1b77] POST /v2/orders status=500 cause="psycopg2.OperationalError: connection refused" db=orders_primary
+2026-02-02T14:12:31Z WARN  orders-service deploy v3.9.1 msg="orm pool config changed: pool_size=5 -> 0 (reuse disabled)"
+2026-02-02T14:20:18Z ERROR orders-service metrics db_errors_per_min=220 db_connections=200 max_connections=200
+2026-02-02T14:41:55Z INFO  orders-service deploy msg="rollback v3.9.1 -> v3.9.0; pgbouncer transaction pooling enabled"
+2026-02-02T15:02:33Z WARN  orders-service db_pool in_use=12/40 wait_ms=18 db=pgbouncer
+2026-02-02T15:20:01Z INFO  orders-service metrics db_errors_per_min=0 msg="stabilized"

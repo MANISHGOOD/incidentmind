@@ -1,0 +1,302 @@
+[
+  {
+    "id": "INC-0101",
+    "title": "Payment API returning HTTP 503 after Redis pool exhaustion",
+    "service": "payment-api",
+    "environment": "production",
+    "severity": "high",
+    "status": "resolved",
+    "started_at": "2026-03-14T10:32:00Z",
+    "resolved_at": "2026-03-14T11:47:00Z",
+    "alert_text": "Payment API is returning HTTP 503 on /v1/charges. Error rate 34% and climbing.",
+    "symptoms": ["HTTP 503", "service unavailable", "high error rate", "slow response times"],
+    "root_cause": "Redis connection pool exhaustion: a leaked connection in the charge-capture path held sockets under load, so new requests waited for a free connection until the pool timed out and the API returned 503.",
+    "resolution": "Hotfix the connection leak (return connection to pool in finally block), raise the Redis pool size from 10 to 50, and restart the affected workers.",
+    "outcome": "Service recovered in ~15 minutes after deploy. Error rate back to baseline <0.1%.",
+    "lessons": [
+      "Redis connection-pool exhaustion on payment-api presents as HTTP 503 with 'pool timed out' in logs.",
+      "A 503 that climbs gradually with traffic points to resource exhaustion, not a bad deploy."
+    ],
+    "log_file": "inc-0101-payment-api-503.log"
+  },
+  {
+    "id": "INC-0102",
+    "title": "Orders service database connection pool exhausted after deploy",
+    "service": "orders-service",
+    "environment": "production",
+    "severity": "high",
+    "status": "resolved",
+    "started_at": "2026-02-02T14:05:00Z",
+    "resolved_at": "2026-02-02T15:20:00Z",
+    "alert_text": "Orders service is timing out. Postgres max_connections reached, connection wait queue growing.",
+    "symptoms": ["HTTP 500", "database timeouts", "connection refused", "elevated latency"],
+    "root_cause": "A deploy halved the connection reuse in the ORM configuration, so every request opened a new Postgres connection. Postgres hit max_connections (200) and started refusing new sessions.",
+    "resolution": "Reverted the ORM pool config, enabled pgbouncer transaction pooling, restarted the orders deployment.",
+    "outcome": "Connections stabilized within 10 minutes of rollback. Added max_connections alerting.",
+    "lessons": [
+      "After any orders-service deploy, check Postgres connection count first.",
+      "Postgres max_connections exhaustion shows as 500s plus 'too many clients already' in logs."
+    ],
+    "log_file": "inc-0102-orders-db-pool.log"
+  },
+  {
+    "id": "INC-0103",
+    "title": "Checkout service memory leak causing OOM restarts",
+    "service": "checkout-service",
+    "environment": "production",
+    "severity": "critical",
+    "status": "resolved",
+    "started_at": "2026-01-18T09:12:00Z",
+    "resolved_at": "2026-01-18T16:40:00Z",
+    "alert_text": "Checkout pods restarting repeatedly. Container memory at 98% of limit.",
+    "symptoms": ["pod restarts", "OOMKilled", "memory usage climbing", "intermittent 500s"],
+    "root_cause": "Unbounded in-process cart cache introduced in the January release: entries were never evicted, so heap grew with unique sessions until the container exceeded its memory limit and was OOM-killed.",
+    "resolution": "Replaced the in-process cache with the shared Redis cache and set a 30-minute TTL. Rolled pods one at a time.",
+    "outcome": "Memory flatlined at ~60% of limit. Added memory-growth alert per deployment.",
+    "lessons": [
+      "Checkout-service memory that climbs steadily across hours means the cart cache, not a traffic spike.",
+      "OOM restart loops on checkout-service have happened twice; both were in-process caching bugs."
+    ],
+    "log_file": "inc-0103-checkout-oom.log"
+  },
+  {
+    "id": "INC-0104",
+    "title": "API gateway returning 504 after upstream timeout regression",
+    "service": "api-gateway",
+    "environment": "production",
+    "severity": "high",
+    "status": "resolved",
+    "started_at": "2026-04-22T18:55:00Z",
+    "resolved_at": "2026-04-22T19:35:00Z",
+    "alert_text": "API gateway 504s at 12% across all routes. Latency p99 above 30s.",
+    "symptoms": ["HTTP 504", "gateway timeout", "high p99 latency"],
+    "root_cause": "The search-team deployment increased their p99 to 28s; the gateway timeout was 30s, so a large fraction of proxied requests hit the gateway deadline and returned 504.",
+    "resolution": "Raised the gateway route timeout to 45s as an interim fix and the search team reverted the slow query. Added per-route timeout dashboards.",
+    "outcome": "504 rate dropped to zero after the search revert; timeout change kept as headroom.",
+    "lessons": [
+      "Gateway-wide 504s are usually a slow upstream, not a gateway fault. Check the slowest upstream first.",
+      "The gateway timeout budget is 30s; any upstream p99 near that will surface as 504s."
+    ],
+    "log_file": "inc-0104-gateway-504.log"
+  },
+  {
+    "id": "INC-0105",
+    "title": "Auth service token validation failing after certificate expiry",
+    "service": "auth-service",
+    "environment": "production",
+    "severity": "critical",
+    "status": "resolved",
+    "started_at": "2026-05-30T04:02:00Z",
+    "resolved_at": "2026-05-30T04:48:00Z",
+    "alert_text": "All authenticated requests returning 401. Login and token refresh broken.",
+    "symptoms": ["HTTP 401", "authentication failures", "certificate verify failed"],
+    "root_cause": "The internal signing certificate expired at 04:00 UTC and the service rejected every token signature, returning 401 for all authenticated traffic.",
+    "resolution": "Rotated the signing certificate immediately, deployed the renewed trust bundle, and added expiry monitoring with 14/7/2-day alerts.",
+    "outcome": "Full recovery by 04:48. Cert rotation automated afterwards.",
+    "lessons": [
+      "Sudden 100% 401 rate with 'certificate verify failed' in logs = expired certificate, not a code bug.",
+      "Auth-service certificates expire quarterly; check the expiry dashboard when auth breaks."
+    ],
+    "log_file": "inc-0105-auth-cert-expiry.log"
+  },
+  {
+    "id": "INC-0106",
+    "title": "Notification consumer lag from unbounded retry queue",
+    "service": "notification-service",
+    "environment": "production",
+    "severity": "medium",
+    "status": "resolved",
+    "started_at": "2026-03-02T08:20:00Z",
+    "resolved_at": "2026-03-02T10:05:00Z",
+    "alert_text": "Notification delivery delayed by 20+ minutes. Kafka consumer lag growing linearly.",
+    "symptoms": ["kafka consumer lag", "delayed notifications", "slow processing"],
+    "root_cause": "An email provider outage caused every send to fail and be requeued without a backoff, so the retry topic grew until the consumer fell minutes behind real traffic.",
+    "resolution": "Added exponential backoff and a dead-letter queue for repeated failures, reprocessed the backlog after the provider recovered.",
+    "outcome": "Lag drained in 40 minutes after backoff fix. DLQ alerting added.",
+    "lessons": [
+      "Consumer lag on notification-service usually means a downstream provider outage, not a consumer bug.",
+      "Check the retry topic depth before restarting consumers; restarts without backoff made it worse."
+    ],
+    "log_file": "inc-0106-notification-lag.log"
+  },
+  {
+    "id": "INC-0107",
+    "title": "Payment API latency spike from missing database index",
+    "service": "payment-api",
+    "environment": "production",
+    "severity": "medium",
+    "status": "resolved",
+    "started_at": "2026-02-19T11:45:00Z",
+    "resolved_at": "2026-02-19T12:30:00Z",
+    "alert_text": "Payment API p99 latency jumped from 200ms to 8s. Error rate normal.",
+    "symptoms": ["high p99 latency", "slow database queries", "sequential scans"],
+    "root_cause": "The monthly reporting job started after a schema change dropped the created_at index on charges; its full-table scans saturated the database IO budget and slowed the whole API.",
+    "resolution": "Recreated the index concurrently, moved the reporting job to the read replica, and staggered its schedule.",
+    "outcome": "Latency back under 300ms within minutes of index creation.",
+    "lessons": [
+      "On payment-api, latency spikes with a normal error rate are database-side; check slow queries before services.",
+      "Schema migrations on charges can silently drop indexes used by the reporting job."
+    ],
+    "log_file": "inc-0107-payment-latency-index.log"
+  },
+  {
+    "id": "INC-0108",
+    "title": "Search service degraded by Elasticsearch shard rebalancing",
+    "service": "search-service",
+    "environment": "production",
+    "severity": "medium",
+    "status": "resolved",
+    "started_at": "2026-04-05T16:10:00Z",
+    "resolved_at": "2026-04-05T17:15:00Z",
+    "alert_text": "Search queries 5-10x slower. Elasticsearch cluster yellow, shards relocating.",
+    "symptoms": ["slow search queries", "high latency", "shard rebalancing"],
+    "root_cause": "A data node was replaced, triggering automatic shard rebalancing; heavy shard recovery IO starved query threads and degraded search latency cluster-wide.",
+    "resolution": "Temporarily throttled rebalancing, enabled replica shard allocation during a low-traffic window, and re-enabled normal speed after recovery.",
+    "outcome": "Search latency recovered once rebalancing finished during low traffic.",
+    "lessons": [
+      "Search-service latency degradation often coincides with cluster maintenance or node replacement.",
+      "Check shard relocation status before debugging query performance."
+    ],
+    "log_file": "inc-0108-search-shard-rebalance.log"
+  },
+  {
+    "id": "INC-0109",
+    "title": "Deployment failure from misconfigured environment variables",
+    "service": "checkout-service",
+    "environment": "staging",
+    "severity": "low",
+    "status": "resolved",
+    "started_at": "2026-06-11T13:25:00Z",
+    "resolved_at": "2026-06-11T13:55:00Z",
+    "alert_text": "Checkout deploy to staging failed health checks and rolled back automatically.",
+    "symptoms": ["failed deployment", "health check failures", "crash loop on startup"],
+    "root_cause": "A required PAYMENT_PROVIDER_URL variable was missing from the staging environment config, so the app aborted on startup validation and failed every health check.",
+    "resolution": "Added the missing variable to the deploy config, hardened startup validation to fail fast with explicit messages, and added a config checklist to the deploy template.",
+    "outcome": "Staging deploy healthy on the next run; template updated to prevent recurrence.",
+    "lessons": [
+      "A crash-loop right after deploy with startup validation errors means missing environment config, not bad code.",
+      "Checkout-service staging deploys need the PAYMENT_PROVIDER_URL variable present."
+    ],
+    "log_file": "inc-0109-checkout-deploy-fail.log"
+  },
+  {
+    "id": "INC-0110",
+    "title": "Rate limiter misconfiguration blocking legitimate traffic",
+    "service": "api-gateway",
+    "environment": "production",
+    "severity": "high",
+    "status": "resolved",
+    "started_at": "2026-05-14T09:40:00Z",
+    "resolved_at": "2026-05-14T10:10:00Z",
+    "alert_text": "Gateway returning 429 for a major customer. Traffic patterns look normal.",
+    "symptoms": ["HTTP 429", "rate limited", "blocked legitimate traffic"],
+    "root_cause": "A new per-route limit was configured per-IP instead of per-API-key; a customer whose traffic is NAT'd through few IPs exhausted the threshold in minutes.",
+    "resolution": "Switched the route's limiter to per-API-key, raised the limit for that tier, and raised a config-review requirement for limiter changes.",
+    "outcome": "429s stopped immediately after the config fix.",
+    "lessons": [
+      "Gateway 429s affecting a single customer are limiter config, not an attack — check which dimension the limiter keys on.",
+      "Per-IP limits break NAT'd enterprise customers; use per-API-key for paid tiers."
+    ],
+    "log_file": "inc-0110-gateway-429-limiter.log"
+  },
+  {
+    "id": "INC-0111",
+    "title": "Inventory service deadlock under flash-sale load",
+    "service": "inventory-service",
+    "environment": "production",
+    "severity": "high",
+    "status": "resolved",
+    "started_at": "2026-03-27T19:00:00Z",
+    "resolved_at": "2026-03-27T20:25:00Z",
+    "alert_text": "Inventory API timing out during flash sale. Lock wait timeouts in the database.",
+    "symptoms": ["HTTP 500", "database lock timeouts", "timeouts under load"],
+    "root_cause": "The flash-sale reservation path locked inventory rows in inconsistent order across code paths, producing circular waits that Postgres resolved as deadlocks under high concurrency.",
+    "resolution": "Enforced consistent row-lock ordering in the reservation path, added deadlock retry logic, and load-tested the sale flow.",
+    "outcome": "Flash sale completed with error rate under 0.2%.",
+    "lessons": [
+      "Inventory-service timeouts that start with a sales event are database deadlocks in the reservation path.",
+      "'deadlock detected' in Postgres logs plus traffic spikes confirms it; retry logic handles the residual."
+    ],
+    "log_file": "inc-0111-inventory-deadlock.log"
+  },
+  {
+    "id": "INC-0112",
+    "title": "Payment API 503 during Kubernetes node autoscaling event",
+    "service": "payment-api",
+    "environment": "production",
+    "severity": "medium",
+    "status": "resolved",
+    "started_at": "2026-01-29T21:15:00Z",
+    "resolved_at": "2026-01-29T21:50:00Z",
+    "alert_text": "Brief 503 burst on Payment API. Several pods rescheduled at once.",
+    "symptoms": ["HTTP 503", "pod rescheduling", "node drain", "brief error spike"],
+    "root_cause": "A cluster node was drained for maintenance; payment-api pods rescheduled together and the surge of cold-start readiness probes momentarily reduced serving capacity below demand.",
+    "resolution": "Configured a pod disruption budget requiring at least 3 replicas available, spread pods across zones with anti-affinity, and scheduled node maintenance in off-peak windows.",
+    "outcome": "Subsequent node drains caused no customer-visible errors.",
+    "lessons": [
+      "Short 503 bursts on payment-api during a node drain are a disruption-budget gap, not an app bug.",
+      "Payment-api needs a PDB of min 3 available replicas and zone anti-affinity."
+    ],
+    "log_file": "inc-0112-payment-node-drain.log"
+  },
+  {
+    "id": "INC-0113",
+    "title": "Analytics warehouse query storm starving the primary database",
+    "service": "orders-service",
+    "environment": "production",
+    "severity": "high",
+    "status": "resolved",
+    "started_at": "2026-06-03T02:00:00Z",
+    "resolved_at": "2026-06-03T03:10:00Z",
+    "alert_text": "Orders service latency spiked at 2 AM. Long-running queries from analytics on the primary.",
+    "symptoms": ["high latency", "database CPU saturation", "long-running queries"],
+    "root_cause": "A scheduled analytics dashboard refresh ran six heavy aggregate queries against the production primary at 02:00, saturating CPU and starving order writes.",
+    "resolution": "Pointed all analytics queries at the read replica, added a statement timeout for analytics roles, and rescheduled the refresh.",
+    "outcome": "No impact on order traffic after cutover to the replica.",
+    "lessons": [
+      "Overnight latency degradation on orders-service is usually analytics queries on the primary; check pg_stat_activity first.",
+      "Analytics roles must run against the read replica with a statement timeout."
+    ],
+    "log_file": "inc-0113-orders-analytics-storm.log"
+  },
+  {
+    "id": "INC-0114",
+    "title": "Notification service provider 429s slowing email delivery",
+    "service": "notification-service",
+    "environment": "production",
+    "severity": "low",
+    "status": "resolved",
+    "started_at": "2026-05-21T15:30:00Z",
+    "resolved_at": "2026-05-21T16:20:00Z",
+    "alert_text": "Email notifications delayed. Upstream email provider returning 429.",
+    "symptoms": ["delayed notifications", "HTTP 429 from provider", "queue growth"],
+    "root_cause": "A marketing campaign tripled email volume beyond the provider plan's rate limit; the provider throttled sends with 429s and the queue grew.",
+    "resolution": "Enabled provider rate-limit-aware sending with adaptive throttling, split transactional and marketing traffic across two provider accounts.",
+    "outcome": "Delivery latency normalized; campaign volume handled by the second account.",
+    "lessons": [
+      "Notification-service delays during marketing campaigns are provider rate limits; check upstream 429 counts.",
+      "Marketing traffic must be throttled separately from transactional email."
+    ],
+    "log_file": "inc-0114-notification-provider-429.log"
+  },
+  {
+    "id": "INC-0115",
+    "title": "Redis cluster failover causing transient session errors",
+    "service": "checkout-service",
+    "environment": "production",
+    "severity": "medium",
+    "status": "resolved",
+    "started_at": "2026-04-12T07:05:00Z",
+    "resolved_at": "2026-04-12T07:30:00Z",
+    "alert_text": "Checkout errors for ~5 minutes. Redis replicas promoting, connection resets in logs.",
+    "symptoms": ["connection resets", "session errors", "transient failures"],
+    "root_cause": "A Redis primary failed and the cluster promoted a replica; clients with long-lived connections reset during the failover window and sessions could not be re-established until clients reconnected.",
+    "resolution": "Enabled client-side connection retry with jittered backoff, shortened Redis client timeouts, and validated session recovery on failover in staging.",
+    "outcome": "A later unplanned failover produced no customer-visible errors.",
+    "lessons": [
+      "Transient checkout errors with 'connection reset by peer' against Redis indicate a failover, not an outage.",
+      "Checkout-service Redis clients need retry-with-backoff enabled to survive failovers."
+    ],
+    "log_file": "inc-0115-checkout-redis-failover.log"
+  }
+]

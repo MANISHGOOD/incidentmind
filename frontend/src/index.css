@@ -1,0 +1,44 @@
+@import "tailwindcss";
+
+:root {
+  --ocean-deep: #06182e;
+  --ocean-mid: #0b2545;
+  --ocean-glow: #0891b2;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(1200px 600px at 15% -10%, rgba(8, 145, 178, 0.18), transparent 60%),
+    radial-gradient(900px 500px at 110% 10%, rgba(14, 116, 144, 0.14), transparent 55%),
+    linear-gradient(180deg, var(--ocean-deep) 0%, var(--ocean-mid) 100%);
+  background-attachment: fixed;
+  color: #e2e8f0;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+.panel {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(103, 232, 249, 0.14);
+  border-radius: 0.9rem;
+  backdrop-filter: blur(6px);
+}
+
+.glow-text {
+  text-shadow: 0 0 24px rgba(34, 211, 238, 0.45);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(103, 232, 249, 0.2);
+  border-radius: 4px;
+}

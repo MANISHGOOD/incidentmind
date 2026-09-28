@@ -1,0 +1,7 @@
+2026-02-19T11:45:12Z WARN  payment-api db query=SELECT * FROM charges WHERE created_at > $1 msg="sequential scan" rows=18400000 duration_ms=7420
+2026-02-19T11:47:38Z WARN  payment-api metrics p99_ms=8100 baseline_p99_ms=210 error_rate=0.004 msg="latency up, errors normal"
+2026-02-19T11:52:04Z WARN  payment-db pg_stat_activity query="SELECT date_trunc('day', created_at), sum(amount) FROM charges GROUP BY 1" state=active duration_s=412 app=reporting-job
+2026-02-19T11:58:47Z WARN  payment-db msg="index charges_created_at_idx is missing (dropped in migration 2026_02_14_0930)"
+2026-02-19T12:05:21Z INFO  payment-db ops msg="CREATE INDEX CONCURRENTLY charges_created_at_idx started"
+2026-02-19T12:14:09Z INFO  payment-db ops msg="index created; reporting job moved to read replica"
+2026-02-19T12:30:00Z INFO  payment-api metrics p99_ms=280 msg="latency recovered"

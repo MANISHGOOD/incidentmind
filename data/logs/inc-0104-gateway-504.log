@@ -1,0 +1,8 @@
+2026-04-22T18:55:03Z WARN  api-gateway [req-51aa] GET /v1/search upstream=search-service upstream_p99_ms=27890 deadline_ms=30000 remaining_ms=2110
+2026-04-22T18:55:09Z ERROR api-gateway [req-51bb] GET /v1/search status=504 cause="upstream response timeout" upstream=search-service elapsed_ms=30004
+2026-04-22T18:58:41Z ERROR api-gateway metrics status_504_rate=0.12 routes=all msg="gateway-wide, not route-specific"
+2026-04-22T19:02:27Z WARN  api-gateway [req-5de3] GET /v1/orders upstream=orders-service upstream_p99_ms=410 deadline_ms=30000 msg="other upstreams healthy"
+2026-04-22T19:11:08Z WARN  api-gateway config msg="route timeout 30s -> 45s (interim)"
+2026-04-22T19:21:19Z INFO  search-service deploy msg="reverted slow ranking query change v8.3.2 -> v8.3.1"
+2026-04-22T19:30:55Z INFO  api-gateway metrics status_504_rate=0.00 upstream_p99_ms=820
+2026-04-22T19:35:02Z INFO  api-gateway msg="recovered; timeout change kept as headroom"

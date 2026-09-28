@@ -1,0 +1,6 @@
+2026-03-27T19:00:04Z ERROR inventory-service [req-3301] POST /v1/inventory/reserve status=500 cause="psycopg2.errors.DeadlockDetected: deadlock detected" tx=reservations
+2026-03-27T19:00:19Z WARN  inventory-service metrics lock_timeouts_per_min=142 msg="flash sale started, concurrency 40x baseline"
+2026-03-27T19:08:47Z WARN  inventory-db pg_locks msg="circular wait: tx A holds sku-8811 waits sku-2204, tx B holds sku-2204 waits sku-8811"
+2026-03-27T19:31:12Z INFO  inventory-service deploy msg="reservation path now locks rows in consistent sku order + deadlock retry"
+2026-03-27T20:02:55Z WARN  inventory-service metrics lock_timeouts_per_min=6 trend=falling
+2026-03-27T20:25:00Z INFO  inventory-service metrics error_rate=0.002 msg="sale completed without incident"
