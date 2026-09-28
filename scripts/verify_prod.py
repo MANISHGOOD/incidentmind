@@ -34,7 +34,8 @@ class HTTP:
             headers={"Content-Type": "application/json", **(headers or {})},
         )
         with urllib.request.urlopen(req, timeout=timeout) as r:
-            return r.status, dict(r.headers), r.read().decode()
+            # Normalize header names to lowercase (Render emits lowercase).
+            return r.status, {k.lower(): v for k, v in r.headers.items()}, r.read().decode()
 
     def get_json(self, path: str, timeout: int = 120):
         status, _, body = self.request(path, timeout=timeout)
@@ -118,7 +119,7 @@ def main() -> int:
                 "Access-Control-Request-Method": "POST",
                 "Access-Control-Request-Headers": "content-type",
             })
-        allow = headers.get("Access-Control-Allow-Origin", "")
+        allow = headers.get("access-control-allow-origin", "")
         check(results, "CORS preflight from Netlify origin",
               status in (200, 204) and NETLIFY_ORIGIN in allow,
               f"allow-origin={allow or '(missing)'}")

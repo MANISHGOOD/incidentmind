@@ -36,10 +36,11 @@ services:
           name: incidentmind-db
           property: connectionString
       - key: HINDSIGHT_BASE_URL
-        fromService:
-          name: incidentmind-hindsight
-          type: web
-          property: hostport
+        # Free-tier services cannot use Render's private network (internal
+        # hostnames like <name>:<port> only resolve on paid plans), so the API
+        # reaches Hindsight over its public URL. Public traffic also wakes a
+        # sleeping free service, which keeps the link self-healing.
+        value: https://incidentmind-hindsight.onrender.com
       - key: HINDSIGHT_BANK_ID
         value: incidentmind
       - key: AGENT_MODEL
