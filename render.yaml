@@ -80,19 +80,26 @@ services:
       - key: HINDSIGHT_API_DB_POOL_MAX_SIZE
         value: "10"
       # ---- LLM: Gemini free tier (Groq free cannot serve retains) ----
+      # !!! BOTH keys below MUST be a Google AI Studio key (aistudio.google.com),
+      # !!! starting with "AIza". A Groq gsk_... key here fails at startup with
+      # !!! 400 API_KEY_INVALID (google.genai ClientError).
+      # !!! Render KEEPS previously-entered sync:false values on blueprint sync —
+      # !!! if this service ever held the Groq key, overwrite it in the dashboard.
+      # HINDSIGHT_API_LLM_API_KEY is ALSO the embeddings fallback in hindsight-api-slim
+      # (embeddings_gemini_api_key = EMBEDDINGS_GEMINI_API_KEY or LLM_API_KEY).
       - key: HINDSIGHT_API_LLM_PROVIDER
         value: gemini
       - key: HINDSIGHT_API_LLM_MODEL
         value: gemini-3.5-flash
       - key: HINDSIGHT_API_LLM_API_KEY
-        sync: false        # free Google AI Studio key (aistudio.google.com)
+        sync: false        # Google AI Studio key (AIza...), NOT a Groq key
       # ---- Embeddings: Gemini embedding API (same free key) ----
       - key: HINDSIGHT_API_EMBEDDINGS_PROVIDER
         value: google
       - key: HINDSIGHT_API_EMBEDDINGS_GEMINI_MODEL
         value: gemini-embedding-001
       - key: HINDSIGHT_API_EMBEDDINGS_GEMINI_API_KEY
-        sync: false        # same free Google AI Studio key
+        sync: false        # same Google AI Studio key (explicit: avoids the fallback above)
       # ---- Reranker: rrf — no neural model, minimal resources ----
       - key: HINDSIGHT_API_RERANKER_PROVIDER
         value: rrf

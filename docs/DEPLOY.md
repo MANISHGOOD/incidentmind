@@ -16,7 +16,15 @@ Browser → Netlify (React SPA) → Render (FastAPI) → Render PostgreSQL
    - `incidentmind-db` (PostgreSQL, free — expires 30 days after creation)
 3. When prompted for `sync: false` secrets:
    - `incidentmind-api` → `GROQ_API_KEY` = your Groq key (console.groq.com/keys)
-   - `incidentmind-hindsight` → `HINDSIGHT_API_LLM_API_KEY` = the same key
+   - `incidentmind-hindsight` → `HINDSIGHT_API_LLM_API_KEY` **and**
+     `HINDSIGHT_API_EMBEDDINGS_GEMINI_API_KEY` = your **Google AI Studio** key
+     (aistudio.google.com/apikey — keys start with `AIza`).
+     ⚠️ These two must be a **Gemini** key, not Groq: Groq's free tier cannot serve
+     Hindsight retains, and a Groq key here fails at startup with
+     `google.genai ClientError: 400 API_KEY_INVALID` during `init_embeddings()`.
+     ⚠️ Render keeps previously-saved `sync: false` values when a blueprint syncs —
+     if these fields ever held an old value (e.g. a Groq key), **overwrite them** in
+     the service's Environment tab.
    - `HINDSIGHT_API_KEY` stays empty
 4. Click **Apply**. First Docker builds take a few minutes — wait for all three to show **Live**.
 5. Smoke test in a browser:
@@ -38,6 +46,15 @@ Browser → Netlify (React SPA) → Render (FastAPI) → Render PostgreSQL
 With the backend live: `curl -X POST https://<render-api>/api/seed-demo`
 (or click **Seed memory** in the dashboard). Idempotent — safe to repeat.
 From then on, memory also self-heals automatically on every backend boot.
+
+## 3b. If hindsight logs show `400 API_KEY_INVALID`
+
+`init_embeddings()` calls Google with `HINDSIGHT_API_EMBEDDINGS_GEMINI_API_KEY`,
+failing over to `HINDSIGHT_API_LLM_API_KEY` when unset. A non-empty-but-wrong
+value (typ. a Groq `gsk_...` key left over from an earlier sync) produces
+`google.genai ClientError: 400 API_KEY_INVALID`. Fix: Render → `incidentmind-hindsight`
+→ Environment → set **both** variables to the same Google AI Studio key (`AIza...`)
+→ Save (this redeploys the service).
 
 ## 4. End-to-end test (the demo)
 
