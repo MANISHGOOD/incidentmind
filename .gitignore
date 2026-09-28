@@ -31,3 +31,6 @@ Thumbs.db
 
 # Local GitHub CLI (downloaded for auth)
 .tools/
+
+# TS incremental build cache
+*.tsbuildinfo
