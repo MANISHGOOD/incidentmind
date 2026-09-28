@@ -1,0 +1,56 @@
+# Render Blueprint for the IncidentMind production backend.
+# Deploy via Render Dashboard → New → Blueprint → point at this repository.
+# The frontend on Netlify only needs VITE_API_URL=<this web service URL>.
+#
+# Secrets (GROQ_API_KEY) are entered in the Render dashboard — never committed.
+
+services:
+  - type: web
+    name: incidentmind-api
+    runtime: docker
+    dockerfilePath: backend/Dockerfile
+    dockerContext: .
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromService:
+          name: incidentmind-db
+          type: psql
+          property: connectionString
+      - key: HINDSIGHT_BASE_URL
+        fromService:
+          name: incidentmind-hindsight
+          type: web
+          property: hostport
+      - key: HINDSIGHT_BANK_ID
+        value: incidentmind
+      - key: AGENT_MODEL
+        value: openai/gpt-oss-120b
+      - key: CORS_ORIGINS
+        value: https://monumental-khapse-b6b78e.netlify.app,http://localhost:5173
+      - key: GROQ_API_KEY
+        sync: false          # set in the Render dashboard after first deploy
+      - key: HINDSIGHT_API_KEY
+        sync: false          # only if you front Hindsight with auth
+
+  - type: psql
+    name: incidentmind-db
+    plan: free
+    databaseName: incidentmind
+    user: incidentmind
+
+  # Hindsight (memory) as a private container-backed service.
+  # If your Render region lacks Docker runtime for this, run Hindsight on
+  # Fly.io instead and point HINDSIGHT_BASE_URL at it.
+  - type: web
+    name: incidentmind-hindsight
+    runtime: docker
+    dockerfilePath: ./Dockerfile.hindsight
+    dockerContext: .
+    plan: starter
+    envVars:
+      - key: HINDSIGHT_API_LLM_PROVIDER
+        value: groq
+      - key: HINDSIGHT_API_LLM_API_KEY
+        sync: false          # same Groq key, entered in the dashboard

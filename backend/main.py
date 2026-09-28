@@ -17,7 +17,7 @@ from .agents.llm import LLMNotConfiguredError
 from .config import get_settings
 from .database import get_db, init_db
 from .memory.client import get_memory
-from .models import Incident, IncidentEvent, Runbook, Service
+from .models import Incident, IncidentEvent, LogEntry, Runbook, Service
 from .schemas import (
     DemoSeedRequest,
     IncidentCreate,
@@ -29,6 +29,7 @@ from .services.incidents import (
     clear_dynamic_data,
     compute_metrics,
     create_incident_record,
+    load_dataset,
     resolve_incident,
     seed_demo_data,
     seed_memory_from_history,
@@ -87,6 +88,35 @@ def overview(db: Session = Depends(get_db)) -> dict:
     return {"active_incidents": active, "resolved_incidents": resolved}
 
 
+@app.get("/api/stats")
+async def stats(db: Session = Depends(get_db)) -> dict:
+    """Dashboard statistics: incidents, memory entries, known patterns."""
+    total = db.query(Incident).count()
+    active = db.query(Incident).filter(Incident.status != "resolved").count()
+    resolved = db.query(Incident).filter(Incident.status == "resolved").count()
+    # "Known patterns" = distinct root causes in resolved incidents — the
+    # organization's accumulated remediation knowledge.
+    known_patterns = (
+        db.query(func.count(func.distinct(Incident.root_cause)))
+        .filter(Incident.root_cause.isnot(None), Incident.root_cause != "")
+        .scalar()
+        or 0
+    )
+    services = db.query(func.count(func.distinct(Incident.service_name))).scalar() or 0
+    runbooks = db.query(Runbook).count()
+    mem = await get_memory().stats()
+    return {
+        "total_incidents": total,
+        "active_incidents": active,
+        "resolved_incidents": resolved,
+        "memory_entries": mem.get("entries"),
+        "memory_available": mem.get("available", False),
+        "known_patterns": known_patterns,
+        "services": services,
+        "runbooks": runbooks,
+    }
+
+
 @app.get("/api/memory/stats")
 async def memory_stats() -> dict:
     """Hindsight availability + entry counts for the memory panel."""
@@ -123,6 +153,29 @@ def get_incident(ref: str, db: Session = Depends(get_db)) -> IncidentDetailOut:
     if inc is None:
         raise HTTPException(status_code=404, detail="incident not found")
     return inc
+
+
+@app.get("/api/incidents/{ref}/logs")
+def get_incident_logs(ref: str, limit: int = 50, db: Session = Depends(get_db)) -> dict:
+    """Evidence: the incident's captured log lines."""
+    inc = db.query(Incident).filter(Incident.ref == ref).first()
+    if inc is None:
+        raise HTTPException(status_code=404, detail="incident not found")
+    rows = (
+        db.query(LogEntry)
+        .filter(LogEntry.incident_id == inc.id)
+        .order_by(LogEntry.id)
+        .limit(max(1, min(limit, 200)))
+        .all()
+    )
+    return {
+        "ref": ref,
+        "count": len(rows),
+        "lines": [
+            {"ts": r.ts, "level": r.level, "service": r.service_name, "line": r.line}
+            for r in rows
+        ],
+    }
 
 
 @app.post("/api/incidents", status_code=201)
@@ -247,6 +300,36 @@ async def demo_seed_memory(body: Optional[DemoSeedRequest] = None) -> dict:
     db = next(get_db())
     try:
         return await seed_memory_from_history(db, memory)
+    finally:
+        db.close()
+
+
+@app.post("/api/seed-demo")
+async def seed_demo() -> dict:
+    """Idempotent demo seeding: PostgreSQL application data + Hindsight memory.
+
+    Safe to call repeatedly — incidents are keyed by deterministic refs
+    (INC-01xx) so re-running inserts nothing new; memory retain uses the same
+    document ids so Hindsight re-anchors rather than duplicates.
+    """
+    db = next(get_db())
+    try:
+        db_counts = seed_demo_data(db)
+        memory = get_memory()
+        if memory.enabled and await memory.check_available():
+            mem_result = await seed_memory_from_history(db, memory)
+        else:
+            dataset, _, _ = load_dataset()
+            mem_result = {
+                "skipped": True,
+                "reason": "hindsight unavailable or memory disabled",
+                "total": len(dataset),
+            }
+        state = {
+            "live_incidents": db.query(Incident).filter(Incident.ref >= "INC-0200").count(),
+            "historical_incidents": db.query(Incident).filter(Incident.ref < "INC-0200").count(),
+        }
+        return {"database": db_counts, "memory": mem_result, "state": state}
     finally:
         db.close()
 

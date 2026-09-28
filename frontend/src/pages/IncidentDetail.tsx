@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api } from '../services/api'
 import { useInvestigation } from '../hooks/useInvestigation'
-import type { Incident, Resolution } from '../types'
+import type { Incident, LogLine, Resolution } from '../types'
 
 const kindIcon: Record<string, string> = {
   status: '⏳',
@@ -22,6 +22,7 @@ const confColor: Record<string, string> = {
 export default function IncidentDetail() {
   const { ref = '' } = useParams()
   const [incident, setIncident] = useState<Incident | null>(null)
+  const [logs, setLogs] = useState<LogLine[]>([])
   const { run, running, error, timeline, recommendation } = useInvestigation(ref)
 
   const [rootCause, setRootCause] = useState('')
@@ -34,6 +35,7 @@ export default function IncidentDetail() {
       setIncident(inc)
       if (inc.root_cause) setRootCause(prev => prev || inc.root_cause!)
     }).catch(() => setIncident(null))
+    api.incidentLogs(ref).then(r => setLogs(r.lines)).catch(() => setLogs([]))
   }, [ref])
 
   useEffect(refresh, [refresh])
@@ -57,6 +59,22 @@ export default function IncidentDetail() {
 
   const res: Resolution | undefined = incident.resolutions?.[incident.resolutions.length - 1]
 
+  let symptoms: string[] = []
+  try {
+    symptoms = incident.symptoms ? JSON.parse(incident.symptoms) : []
+  } catch {
+    symptoms = incident.symptoms ? [incident.symptoms] : []
+  }
+
+  let lessonList: string[] = []
+  if (res?.lessons) {
+    try {
+      lessonList = JSON.parse(res.lessons)
+    } catch {
+      lessonList = []
+    }
+  }
+
   return (
     <div className="grid lg:grid-cols-2 gap-6">
       {/* Left: incident + live investigation */}
@@ -76,6 +94,13 @@ export default function IncidentDetail() {
             </div>
           </div>
           <p className="text-sm text-slate-300 mt-3">{incident.alert_text}</p>
+          {symptoms.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {symptoms.map((s, i) => (
+                <span key={i} className="text-xs px-2 py-0.5 rounded-full border border-sky-400/30 bg-sky-500/10 text-sky-200">{s}</span>
+              ))}
+            </div>
+          )}
           <div className="text-xs text-slate-500 mt-2">
             Memory-assisted run: {incident.memory_used ? 'yes' : 'no'} · started {new Date(incident.started_at).toLocaleString()}
           </div>
@@ -86,6 +111,24 @@ export default function IncidentDetail() {
           >
             {running ? 'Investigating…' : incident.events?.length ? 'Re-investigate' : 'Investigate with agent'}
           </button>
+        </div>
+
+        <div className="panel p-5">
+          <h2 className="font-medium text-cyan-100 mb-3">Evidence / logs {logs.length > 0 && <span className="text-xs text-slate-500">({logs.length} lines)</span>}</h2>
+          {logs.length > 0 ? (
+            <div className="max-h-72 overflow-y-auto rounded-lg bg-black/30 border border-white/10 p-3">
+              {logs.map((l, i) => (
+                <div key={i} className="font-mono text-[11px] leading-relaxed whitespace-pre-wrap">
+                  <span className={l.level === 'ERROR' ? 'text-rose-400' : l.level === 'WARN' ? 'text-amber-300' : l.level === 'CRITI' ? 'text-rose-300 font-semibold' : 'text-slate-500'}>
+                    [{l.level ?? 'LOG'}]
+                  </span>{' '}
+                  <span className="text-slate-400">{l.line}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-sm text-slate-500">No log evidence captured for this incident.</div>
+          )}
         </div>
 
         <div className="panel p-5">
@@ -193,6 +236,14 @@ export default function IncidentDetail() {
               <div><span className="text-slate-500">Root cause:</span> {res.root_cause}</div>
               <div><span className="text-slate-500">Action taken:</span> {res.action_taken}</div>
               <div><span className="text-slate-500">Outcome:</span> {res.outcome}</div>
+              {lessonList.length > 0 && (
+                <div className="mt-2">
+                  <div className="text-xs uppercase tracking-wider text-slate-500 mb-1">Lessons learned</div>
+                  <ul className="list-disc list-inside text-slate-300 space-y-0.5">
+                    {lessonList.map((lesson, i) => <li key={i}>{lesson}</li>)}
+                  </ul>
+                </div>
+              )}
             </div>
           ) : (
             <div className="space-y-3 text-sm">

@@ -45,7 +45,7 @@ export default function App() {
     try {
       const inc = await api.createIncident({
         service_name: 'payment-api',
-        alert_text: 'Payment API is returning HTTP 503 on /v1/charges. Error rate climbing.',
+        alert_text: 'Payment API is returning HTTP 503 errors. Workers cannot obtain Redis connections.',
         severity: 'high',
       })
       flash(`Created ${inc.ref}`)

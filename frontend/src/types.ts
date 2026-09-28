@@ -63,6 +63,24 @@ export interface Metrics {
   retention: { resolved_incidents_in_db: number; paired_comparisons: number; note: string }
 }
 
+export interface Stats {
+  total_incidents: number
+  active_incidents: number
+  resolved_incidents: number
+  memory_entries: number | null
+  memory_available: boolean
+  known_patterns: number
+  services: number
+  runbooks: number
+}
+
+export interface LogLine {
+  ts: string | null
+  level: string | null
+  service: string | null
+  line: string
+}
+
 export interface DemoState {
   live_incidents: number
   historical_incidents: number

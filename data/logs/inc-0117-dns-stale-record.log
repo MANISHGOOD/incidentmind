@@ -1,0 +1,8 @@
+2026-07-21T12:15:03Z ERROR checkout-service [req-4401] GET /checkout/session cause="dial tcp: lookup redis-sessions.internal on 10.0.0.10:53: no such host" fallback_ip=10.2.3.9
+2026-07-21T12:15:44Z WARN  checkout-service discovery msg="hostname failing, direct IP succeeding" host=redis-sessions.internal resolved_ip=10.2.3.4 (stale)
+2026-07-21T12:16:12Z INFO  redis-cluster msg="primary failed over 47 minutes ago; old node decommissioned" new_primary=10.2.3.9
+2026-07-21T12:22:31Z WARN  checkout-service metrics session_error_rate=0.22 trend=climbing msg="all pods resolving stale A record"
+2026-07-21T12:31:05Z WARN  dns-provider msg="A record redis-sessions.internal TTL=3600 still pointing to 10.2.3.4 (decommissioned)"
+2026-07-21T12:40:19Z INFO  dns-provider msg="A record corrected to 10.2.3.9, TTL lowered 3600 -> 60"
+2026-07-21T12:47:52Z WARN  checkout-service discovery msg="client DNS cache cleared; re-resolving per connection attempt"
+2026-07-21T13:05:00Z INFO  checkout-service metrics session_error_rate=0.002 msg="recovered"

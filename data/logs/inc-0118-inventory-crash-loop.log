@@ -1,0 +1,8 @@
+2026-08-04T09:50:04Z ERROR inventory-service pod=inv-6f9a-1 panic: runtime error: invalid memory address or nil pointer dereference [signal SIGSEGV] goroutine=worker variants=nil sku=SKU-99120
+2026-08-04T09:50:06Z WARN  k8s pod=inv-6f9a-1 msg="Container inventory terminated (Error)" restart_count=1
+2026-08-04T09:52:31Z ERROR inventory-service pod=inv-6f9a-2 panic: nil pointer dereference sku=SKU-99120 msg="same message redelivered"
+2026-08-04T09:55:00Z WARN  k8s deployment=inventory msg="4 of 6 replicas in CrashLoopBackOff"
+2026-08-04T10:02:18Z WARN  inventory-service consumer msg="poison message identified on supplier-inventory topic offset=88132 payload={sku: SKU-99120, variants: null}"
+2026-08-04T10:15:47Z INFO  inventory-service deploy msg="nil guard + schema validator on supplier topic; poison message moved to DLQ"
+2026-08-04T10:31:22Z INFO  k8s msg="pods rolled cleanly, all replicas ready"
+2026-08-04T10:40:00Z INFO  inventory-service metrics error_rate=0.000 msg="deployment stable; supplier notified about payload"

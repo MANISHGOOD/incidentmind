@@ -298,5 +298,65 @@
       "Checkout-service Redis clients need retry-with-backoff enabled to survive failovers."
     ],
     "log_file": "inc-0115-checkout-redis-failover.log"
+  },
+  {
+    "id": "INC-0116",
+    "title": "Log volume filled the database volume to 100%",
+    "service": "orders-service",
+    "environment": "production",
+    "severity": "critical",
+    "status": "resolved",
+    "started_at": "2026-07-08T03:40:00Z",
+    "resolved_at": "2026-07-08T06:05:00Z",
+    "alert_text": "Disk usage on the orders database host at 99%. Writes about to fail.",
+    "symptoms": ["disk usage 99%", "database write failures imminent", "log directory growth", "WAL archive backlog"],
+    "root_cause": "A debug logging change shipped with the July release wrote verbose request/response dumps for every order; the log directory grew 40 GB/day until the database volume hit 100% and WAL archiving stalled.",
+    "resolution": "Shipped the log-volume fix (verbose flag off), archived and truncated the log directory, expanded the volume as headroom, and added disk-usage alerts at 70/85/95%.",
+    "outcome": "Writes recovered within 20 minutes of truncation; volume resized during the same window.",
+    "lessons": [
+      "Overnight disk alerts on orders-service usually mean log growth from a recent release, not user data.",
+      "Check the newest release's logging flags before expanding storage; truncation beats resizing when debug logs are the cause."
+    ],
+    "log_file": "inc-0116-storage-exhaustion.log"
+  },
+  {
+    "id": "INC-0117",
+    "title": "Stale DNS record broke service discovery after Redis failover",
+    "service": "checkout-service",
+    "environment": "production",
+    "severity": "high",
+    "status": "resolved",
+    "started_at": "2026-07-21T12:15:00Z",
+    "resolved_at": "2026-07-21T13:05:00Z",
+    "alert_text": "Checkout cannot reach the sessions Redis by hostname. DNS resolving to the dead node.",
+    "symptoms": ["service discovery failure", "DNS resolving to old IP", "connection timeouts by hostname", "IP connections succeed"],
+    "root_cause": "The internal DNS record for redis-sessions.internal still pointed at the decommissioned primary after a failover; the TTL of 3600s kept every checkout pod resolving the dead node for up to an hour.",
+    "resolution": "Corrected the DNS record in the provider, dropped TTL to 60s for internal records, and switched the client to resolve at connection-retry time instead of caching the first lookup.",
+    "outcome": "All pods recovered within 5 minutes of the record fix; later failovers self-healed within a TTL window.",
+    "lessons": [
+      "If checkout hosts fail by hostname but succeed by IP, suspect stale DNS/service discovery before the network.",
+      "Internal DNS TTLs must be 60s for anything with an automated failover."
+    ],
+    "log_file": "inc-0117-dns-stale-record.log"
+  },
+  {
+    "id": "INC-0118",
+    "title": "Inventory service crash loop from nil pointer on malformed SKU payload",
+    "service": "inventory-service",
+    "environment": "production",
+    "severity": "critical",
+    "status": "resolved",
+    "started_at": "2026-08-04T09:50:00Z",
+    "resolved_at": "2026-08-04T10:40:00Z",
+    "alert_text": "Inventory pods restarting continuously. CrashLoopBackOff on 4 of 6 replicas.",
+    "symptoms": ["CrashLoopBackOff", "pod restarts", "panic in worker", "inventory API 500s"],
+    "root_cause": "A supplier integration posted a SKU payload with a null variants array; the inventory worker dereferenced it without a guard and panicked. The poisoned message was re-delivered to every restarting pod, crashing the whole deployment in a loop.",
+    "resolution": "Added the nil-guard plus a schema validator on the supplier topic, moved the poison message to the DLQ, and rolled the pods cleanly.",
+    "outcome": "Deployment stable after rollback of the vulnerable worker; supplier payload fixed at the source the same day.",
+    "lessons": [
+      "A synchronized crash loop across replicas means a poison message is being re-delivered, not flaky infrastructure.",
+      "Supplier-facing topics need payload validation before the worker touches nested fields."
+    ],
+    "log_file": "inc-0118-inventory-crash-loop.log"
   }
 ]

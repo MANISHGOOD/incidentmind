@@ -1,0 +1,9 @@
+2026-07-08T03:40:11Z WARN  node-exporter host=orders-db-1 filesystem=/var/lib/postgresql used_percent=97.2 available_gb=18 trend=rapid_growth
+2026-07-08T03:52:38Z WARN  orders-service db msg="WAL archive backlog growing" segments_pending=412 archive_target=wal-g
+2026-07-08T04:15:02Z ERROR orders-db pg msg="could not write to log directory: No space left on device" path=/var/log/postgresql
+2026-07-08T04:20:44Z WARN  orders-service logs msg="verbose request/response dumps enabled in v5.2.0 (debug=true)" growth_rate_gb_per_day=40
+2026-07-08T04:41:19Z CRITI node-exporter host=orders-db-1 filesystem=/var/lib/postgresql used_percent=99.4 available_gb=3
+2026-07-08T05:02:57Z INFO  orders-service deploy msg="v5.2.1: verbose logging disabled"
+2026-07-08T05:26:33Z INFO  ops msg="log directory archived and truncated, 610 GB reclaimed"
+2026-07-08T05:48:12Z WARN  node-exporter host=orders-db-1 used_percent=71.0 msg="volume expansion 1TB -> 1.5TB in progress"
+2026-07-08T06:05:00Z INFO  orders-db pg msg="WAL archiving caught up, writes healthy"

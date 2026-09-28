@@ -1,5 +1,5 @@
 import type {
-  DemoState, Incident, MemoryStats, Metrics, Recommendation, Runbook,
+  DemoState, Incident, LogLine, MemoryStats, Metrics, Recommendation, Runbook, Stats,
 } from '../types'
 
 // Backend base URL. On Netlify (or any static host) set VITE_API_URL to the
@@ -71,6 +71,15 @@ export const api = {
   demoState: () => fetch(url('/api/demo/state')).then(r => handle<DemoState>(r)),
 
   metrics: () => fetch(url('/api/metrics')).then(r => handle<Metrics>(r)),
+
+  stats: () => fetch(url('/api/stats')).then(r => handle<Stats>(r)),
+
+  incidentLogs: (ref: string) =>
+    fetch(url(`/api/incidents/${ref}/logs`)).then(r => handle<{ ref: string; count: number; lines: LogLine[] }>(r)),
+
+  seedDemo: () =>
+    fetch(url('/api/seed-demo'), { method: 'POST' })
+      .then(r => handle<{ database: { incidents: number; logs: number; runbooks: number }; memory: { retained?: number; failed?: number; total: number; skipped?: boolean } }>(r)),
 }
 
 export interface StreamEvent {

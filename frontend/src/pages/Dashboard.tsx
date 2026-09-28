@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../services/api'
-import type { DemoState, Incident, MemoryStats, Metrics } from '../types'
+import type { DemoState, Incident, MemoryStats, Metrics, Stats } from '../types'
 
 function Stat({ label, value, hint }: { label: string; value: string | number; hint?: string }) {
   return (
@@ -26,6 +26,7 @@ const statusColor: Record<string, string> = {
 
 export default function Dashboard() {
   const [overview, setOverview] = useState({ active_incidents: 0, resolved_incidents: 0 })
+  const [stats, setStats] = useState<Stats | null>(null)
   const [memory, setMemory] = useState<MemoryStats | null>(null)
   const [metrics, setMetrics] = useState<Metrics | null>(null)
   const [demo, setDemo] = useState<DemoState | null>(null)
@@ -33,10 +34,11 @@ export default function Dashboard() {
 
   const refresh = useCallback(() => {
     api.overview().then(setOverview).catch(() => {})
+    api.stats().then(setStats).catch(() => {})
     api.memoryStats().then(setMemory).catch(() => setMemory(null))
     api.metrics().then(setMetrics).catch(() => {})
     api.demoState().then(setDemo).catch(() => {})
-    api.listIncidents().then(setIncidents).catch(() => {})
+    api.listIncidents().then(r => setIncidents(r)).catch(() => setIncidents([]))
   }, [])
 
   useEffect(() => {
@@ -56,15 +58,24 @@ export default function Dashboard() {
         <Stat label="Resolved incidents" value={overview.resolved_incidents} hint="application database" />
         <Stat
           label="Memory entries"
-          value={memory?.entries ?? '—'}
+          value={stats?.memory_entries ?? memory?.entries ?? '—'}
           hint={memory?.available ? `Hindsight bank: ${memory.bank_id}` : 'Hindsight offline'}
         />
         <Stat
-          label="Investigation steps (avg)"
-          value={wm != null ? wm : '—'}
-          hint={improvement != null ? `${improvement}% fewer steps vs no memory` : 'run the A/B demo to measure'}
+          label="Known patterns"
+          value={stats?.known_patterns ?? '—'}
+          hint={stats ? `${stats.services} services · ${stats.runbooks} runbooks` : undefined}
         />
       </div>
+
+      {stats && (
+        <div className="panel p-4 text-xs text-slate-400 flex flex-wrap gap-x-6 gap-y-1">
+          <span><span className="text-cyan-300">{stats.total_incidents}</span> total incidents</span>
+          <span><span className="text-cyan-300">{stats.resolved_incidents}</span> resolved</span>
+          <span><span className="text-cyan-300">{stats.runbooks}</span> runbooks</span>
+          <span>synthetic demo dataset — not real company data</span>
+        </div>
+      )}
 
       {metrics && (
         <div className="panel p-5">
