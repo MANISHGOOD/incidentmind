@@ -28,3 +28,6 @@ Thumbs.db
 
 # Logs
 *.log.out
+
+# Local GitHub CLI (downloaded for auth)
+.tools/
